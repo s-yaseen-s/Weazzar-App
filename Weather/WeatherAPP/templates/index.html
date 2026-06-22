@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#302b63">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Weazzar — Weather Anywhere</title>
+</head>
+<body>
+<div class="container">
+
+    <div class="header">
+        <h1>🌤️ Weazzar</h1>
+    </div>
+
+    <nav class="nav-bar glass-card">
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/about">About</a></li>
+            <li><a href="/contact">Contact Us</a></li>
+        </ul>
+    </nav>
+
+    <!-- ── Homepage Hero ── -->
+    <div class="home-hero">
+        <p class="home-kicker">Real-time weather for</p>
+        <h1 class="home-title">anywhere on Earth.</h1>
+        <p class="home-sub">Accurate conditions, 7-day forecasts,<br>and detailed atmospheric data — instantly.</p>
+    </div>
+
+    <div class="home-features">
+        <span class="home-feat">🌍 200+ countries</span>
+        <span class="home-feat-dot">·</span>
+        <span class="home-feat">📡 Live updates</span>
+        <span class="home-feat-dot">·</span>
+        <span class="home-feat">📆 7-day outlook</span>
+        <span class="home-feat-dot">·</span>
+        <span class="home-feat">📍 Auto-location</span>
+    </div>
+
+    <!-- ── Search ── -->
+    <div class="search-form glass-card">
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+        <form action="/weather" method="post" id="weather-form">
+            <label for="city">City Name</label>
+            <div class="suggestions-wrapper">
+                <input type="text" id="city" name="city"
+                       placeholder="e.g., London, New York, Tokyo…"
+                       required maxlength="100" autocomplete="off">
+                <div id="suggestions" class="suggestions-dropdown"></div>
+            </div>
+            <button type="submit" id="submit-btn">Get Weather</button>
+        </form>
+    </div>
+
+    <div id="weather-container"></div>
+
+    <div class="footer">
+        <p>&copy; 2026 Weazzar — Powered by WeatherAPI &middot; <a href="/privacy" style="opacity:0.6">Privacy Policy</a></p>
+    </div>
+
+</div>
+
+<button id="install-btn" class="install-btn">📲 Install App</button>
+
+<script>
+    /* ── Helpers ── */
+    function esc(str) {
+        const d = document.createElement('div');
+        d.textContent = String(str);
+        return d.innerHTML;
+    }
+
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    /* ── Unit preference ── */
+    function getUnit() { return localStorage.getItem('weazzar_unit') || 'C'; }
+
+    function setUnit(unit) {
+        localStorage.setItem('weazzar_unit', unit);
+        const isF = unit === 'F';
+        document.querySelectorAll('.temp-val').forEach(el => {
+            el.textContent = (isF ? el.dataset.f : el.dataset.c) + '°';
+        });
+        document.querySelectorAll('.fc-high, .fc-low').forEach(el => {
+            el.textContent = (isF ? el.dataset.f : el.dataset.c) + '°';
+        });
+        document.querySelectorAll('.hitemp, .lotemp').forEach(el => {
+            el.textContent = (isF ? el.dataset.f : el.dataset.c) + '°';
+        });
+        document.querySelectorAll('.unit-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.unit === unit);
+        });
+    }
+
+    /* ── Metric bar helpers ── */
+    function uvBar(pct) {
+        if (pct < 30) return 'bar-green';
+        if (pct < 55) return 'bar-yellow';
+        return 'bar-red';
+    }
+    function windBar(pct) {
+        if (pct < 25) return 'bar-green';
+        if (pct < 50) return 'bar-yellow';
+        return 'bar-red';
+    }
+    function humBar(pct) {
+        if (pct < 40) return 'bar-blue';
+        if (pct < 70) return 'bar-green';
+        return 'bar-yellow';
+    }
+    function visBar(pct) {
+        if (pct > 60) return 'bar-green';
+        if (pct > 30) return 'bar-yellow';
+        return 'bar-red';
+    }
+
+    function metricCard(icon, label, value, cls, barPct, barClass) {
+        return `<div class="metric-card">
+            <span class="metric-icon">${icon}</span>
+            <div class="metric-label">${label}</div>
+            <div class="metric-value ${esc(cls)}">${esc(value)}</div>
+            <div class="metric-bar">
+                <div class="metric-bar-fill ${esc(barClass)}" style="width:${clamp(barPct,0,100)}%"></div>
+            </div>
+        </div>`;
+    }
+
+    /* ── Sparkline SVG ── */
+    function makeSparkline(forecast) {
+        const temps = forecast.map(d => d.max_c);
+        if (temps.length < 2) return '';
+        const mn = Math.min(...temps) - 2, mx = Math.max(...temps) + 2;
+        const W = 560, H = 48;
+        const pts = temps.map((t, i) =>
+            `${((i / (temps.length - 1)) * W).toFixed(1)},${(H - ((t - mn) / (mx - mn)) * H).toFixed(1)}`
+        ).join(' ');
+        const circles = temps.map((t, i) => {
+            const cx = ((i / (temps.length - 1)) * W).toFixed(1);
+            const cy = (H - ((t - mn) / (mx - mn)) * H).toFixed(1);
+            return `<circle cx="${cx}" cy="${cy}" r="3.5" fill="rgba(255,255,255,0.9)"/>`;
+        }).join('');
+        return `<div class="sparkline-wrapper">
+            <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="temp-sparkline">
+                <polyline points="${pts}" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+                ${circles}
+            </svg>
+        </div>`;
+    }
+
+    /* ── Render auto-detected weather ── */
+    function renderWeather(w) {
+        document.body.className = `theme-${esc(w.theme)}`;
+        const isF = getUnit() === 'F';
+
+        const unitC = !isF ? 'active' : '';
+        const unitF =  isF ? 'active' : '';
+
+        /* Metric bar percentages */
+        const uvPct  = clamp(Math.round(w.uv_pct  || 0), 0, 100);
+        const wPct   = clamp(Math.round(w.wind_pct || 0), 0, 100);
+        const hPct   = clamp(w.humidity_pct || 0, 0, 100);
+        const visPct = clamp(Math.round(w.vis_pct  || 0), 0, 100);
+        const pPct   = clamp(Math.round(w.pressure_pct || 50), 0, 100);
+        const flPct  = clamp(Math.round(((w.feelslike_c + 20) / 60) * 100), 0, 100);
+
+        const todayMaxC = w.today_max_c || w.temp_num;
+        const todayMinC = w.today_min_c || w.temp_num;
+        const todayMaxF = w.today_max_f || w.temp_num_f;
+        const todayMinF = w.today_min_f || w.temp_num_f;
+
+        const forecastHTML = (w.forecast || []).map(d => `
+            <div class="forecast-card">
+                <div class="forecast-day">${esc(d.day)}</div>
+                <span class="forecast-emoji">${esc(d.emoji)}</span>
+                <div class="forecast-temps">
+                    <span class="fc-high" data-c="${esc(String(d.max_c))}" data-f="${esc(String(d.max_f))}">${isF ? d.max_f : d.max_c}°</span>
+                    <span class="forecast-sep">/</span>
+                    <span class="fc-low forecast-low" data-c="${esc(String(d.min_c))}" data-f="${esc(String(d.min_f))}">${isF ? d.min_f : d.min_c}°</span>
+                </div>
+                <div class="forecast-rain-label">💧 ${esc(String(d.rain))}%</div>
+                <div class="forecast-rain-bar">
+                    <div class="forecast-rain-fill" style="width:${esc(String(d.rain))}%"></div>
+                </div>
+            </div>`).join('');
+
+        const now = new Date();
+        const displayDate = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+        document.getElementById('weather-container').innerHTML = `
+            <div class="weather-layout">
+                <div class="weather-hero">
+                    <div class="hero-bg-emoji">${esc(w.condition_emoji)}</div>
+                    <div class="unit-toggle">
+                        <button class="unit-btn ${unitC}" data-unit="C" onclick="setUnit('C')">°C</button>
+                        <button class="unit-btn ${unitF}" data-unit="F" onclick="setUnit('F')">°F</button>
+                    </div>
+                    <div class="hero-date">${displayDate}</div>
+                    <div class="hero-location-line">${esc(w.location)}</div>
+                    <div class="weather-temp-display temp-val"
+                         data-c="${esc(String(w.temp_num))}"
+                         data-f="${esc(String(w.temp_num_f))}">${isF ? w.temp_num_f : w.temp_num}°</div>
+                    <div class="weather-condition-text">${esc(w.condition)}</div>
+                    <div class="hero-hilow">
+                        <span class="hero-high">↑ <span class="hitemp temp-val" data-c="${todayMaxC}" data-f="${todayMaxF}">${isF ? todayMaxF : todayMaxC}°</span></span>
+                        <span class="hero-sep">·</span>
+                        <span class="hero-low">↓ <span class="lotemp temp-val" data-c="${todayMinC}" data-f="${todayMinF}">${isF ? todayMinF : todayMinC}°</span></span>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    ${metricCard('🌡️', 'Feels Like',
+                        `${isF ? w.feelslike_f : w.feelslike_c}°`,
+                        w.feels_class || 'val-neutral', flPct, 'bar-white')}
+                    ${metricCard('☀️', 'UV Index',   w.uv_rays,    w.uv_class    || 'val-neutral', uvPct,  uvBar(uvPct))}
+                    ${metricCard('📊', 'Pressure',   w.pressure,   w.pressure_class || 'val-neutral', pPct, 'bar-blue')}
+                    ${metricCard('💨', 'Wind',       w.wind_speed, w.wind_class  || 'val-neutral', wPct,   windBar(wPct))}
+                    ${metricCard('💧', 'Humidity',   w.humidity,   w.humidity_class || 'val-neutral', hPct, humBar(hPct))}
+                    ${metricCard('👁️', 'Visibility', w.visibility, w.vis_class   || 'val-neutral', visPct, visBar(visPct))}
+                </div>
+            </div>
+
+            ${forecastHTML ? `
+            <div class="forecast-section">
+                <div class="section-title">7-Day Forecast</div>
+                ${makeSparkline(w.forecast || [])}
+                <div class="forecast-scroll">${forecastHTML}</div>
+            </div>` : ''}
+
+            <div class="map-section-label">Location Map</div>
+            <div class="map-section">
+                <img src="${esc(w.map_url)}" alt="Location Map" class="map-image">
+            </div>`;
+
+        /* Apply saved unit after render */
+        setUnit(getUnit());
+    }
+
+    /* ── Autocomplete ── */
+    const cityInput = document.getElementById('city');
+    const dropdown  = document.getElementById('suggestions');
+    let debounce, selIdx = -1;
+
+    cityInput.addEventListener('input', function () {
+        const q = this.value.trim();
+        clearTimeout(debounce);
+        selIdx = -1;
+        if (q.length < 2) { hide(); return; }
+        debounce = setTimeout(() => {
+            fetch(`/api/search?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(res => res.length ? showDropdown(res) : hide())
+                .catch(hide);
+        }, 280);
+    });
+
+    cityInput.addEventListener('keydown', function (e) {
+        const items = dropdown.querySelectorAll('.suggestion-item');
+        if (!items.length) return;
+        if (e.key === 'ArrowDown')  { e.preventDefault(); selIdx = Math.min(selIdx + 1, items.length - 1); highlight(items); }
+        else if (e.key === 'ArrowUp')   { e.preventDefault(); selIdx = Math.max(selIdx - 1, -1); highlight(items); }
+        else if (e.key === 'Enter' && selIdx >= 0) { e.preventDefault(); items[selIdx].click(); }
+        else if (e.key === 'Escape') { hide(); }
+    });
+
+    document.addEventListener('click', e => {
+        if (!cityInput.contains(e.target) && !dropdown.contains(e.target)) hide();
+    });
+
+    function showDropdown(results) {
+        selIdx = -1;
+        dropdown.innerHTML = results.map(r => `
+            <div class="suggestion-item" data-city="${esc(r.name + ', ' + r.country)}">
+                <div class="suggestion-text">
+                    <span class="suggestion-name">${esc(r.name)}</span>
+                    <span class="suggestion-detail">${esc(r.region + ', ' + r.country)}</span>
+                </div>
+            </div>`).join('');
+        dropdown.style.display = 'block';
+        dropdown.querySelectorAll('.suggestion-item').forEach(item => {
+            item.addEventListener('click', function () {
+                cityInput.value = this.dataset.city;
+                hide();
+                document.getElementById('weather-form').requestSubmit();
+            });
+        });
+    }
+
+    function hide() { dropdown.style.display = 'none'; dropdown.innerHTML = ''; selIdx = -1; }
+
+    function highlight(items) {
+        items.forEach((el, i) => el.classList.toggle('suggestion-selected', i === selIdx));
+        if (selIdx >= 0) cityInput.value = items[selIdx].dataset.city;
+    }
+
+    document.getElementById('weather-form').addEventListener('submit', function () {
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = true;
+        btn.textContent = 'Loading…';
+    });
+
+    /* ── Geolocation auto-detect ── */
+    function loadLocalWeather() {
+        if (!navigator.geolocation) return;
+        document.getElementById('weather-container').innerHTML = `
+            <div class="loading-state glass-card">
+                <div class="loading-spinner"></div>
+                <p>Detecting your location…</p>
+            </div>`;
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                fetch(`/api/weather/coords/${pos.coords.latitude}/${pos.coords.longitude}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.error) document.getElementById('weather-container').innerHTML = '';
+                        else renderWeather(data);
+                    })
+                    .catch(() => { document.getElementById('weather-container').innerHTML = ''; });
+            },
+            () => { document.getElementById('weather-container').innerHTML = ''; }
+        );
+    }
+
+    /* ── PWA ── */
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('install-btn').style.display = 'flex';
+    });
+
+    document.getElementById('install-btn').addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt = null;
+        document.getElementById('install-btn').style.display = 'none';
+    });
+
+    window.addEventListener('appinstalled', () => {
+        document.getElementById('install-btn').style.display = 'none';
+    });
+
+    window.addEventListener('load', loadLocalWeather);
+</script>
+</body>
+</html>

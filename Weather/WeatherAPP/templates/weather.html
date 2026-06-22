@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#302b63">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>{{ city }} — Weazzar</title>
+</head>
+<body class="theme-{{ theme }}">
+<div class="container">
+
+    <div class="header">
+        <h1>🌤️ Weazzar</h1>
+    </div>
+
+    <nav class="nav-bar glass-card">
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/about">About</a></li>
+            <li><a href="/contact">Contact Us</a></li>
+        </ul>
+    </nav>
+
+    <!-- ── Hero + Metrics (two-column on desktop) ── -->
+    <div class="weather-layout">
+
+        <!-- Hero -->
+        <div class="weather-hero">
+            <div class="hero-bg-emoji">{{ condition_emoji }}</div>
+            <div class="unit-toggle">
+                <button class="unit-btn active" data-unit="C" onclick="setUnit('C')">°C</button>
+                <button class="unit-btn"        data-unit="F" onclick="setUnit('F')">°F</button>
+            </div>
+            <div class="hero-date">{{ display_date }}</div>
+            <div class="hero-location-line">{{ location }}</div>
+            <div class="weather-temp-display temp-val"
+                 data-c="{{ temp_num }}"
+                 data-f="{{ temp_num_f }}">{{ temp_num }}°</div>
+            <div class="weather-condition-text">{{ condition }}</div>
+            <div class="hero-hilow">
+                <span class="hero-high">↑ <span class="hitemp temp-val"
+                    data-c="{{ today_max_c }}"
+                    data-f="{{ today_max_f }}">{{ today_max_c }}°</span></span>
+                <span class="hero-sep">·</span>
+                <span class="hero-low">↓ <span class="lotemp temp-val"
+                    data-c="{{ today_min_c }}"
+                    data-f="{{ today_min_f }}">{{ today_min_c }}°</span></span>
+            </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <span class="metric-icon">🌡️</span>
+                <div class="metric-label">Feels Like</div>
+                <div class="metric-value {{ feels_class }} temp-val"
+                     data-c="{{ feelslike_c }}"
+                     data-f="{{ feelslike_f }}">{{ feelslike_c }}°</div>
+                <div class="metric-bar">
+                    <div class="metric-bar-fill bar-white" style="width: {{ [((feelslike_c + 20) / 60 * 100)|int, 0]|max }}%"></div>
+                </div>
+            </div>
+            <div class="metric-card">
+                <span class="metric-icon">☀️</span>
+                <div class="metric-label">UV Index</div>
+                <div class="metric-value {{ uv_class }}">{{ uv_rays }}</div>
+                <div class="metric-bar">
+                    <div class="metric-bar-fill {% if uv_pct < 30 %}bar-green{% elif uv_pct < 55 %}bar-yellow{% else %}bar-red{% endif %}"
+                         style="width: {{ uv_pct }}%"></div>
+                </div>
+            </div>
+            <div class="metric-card">
+                <span class="metric-icon">📊</span>
+                <div class="metric-label">Pressure</div>
+                <div class="metric-value {{ pressure_class }}">{{ pressure }}</div>
+                <div class="metric-bar">
+                    <div class="metric-bar-fill bar-blue" style="width: {{ pressure_pct }}%"></div>
+                </div>
+            </div>
+            <div class="metric-card">
+                <span class="metric-icon">💨</span>
+                <div class="metric-label">Wind</div>
+                <div class="metric-value {{ wind_class }}">{{ wind_speed }}</div>
+                <div class="metric-bar">
+                    <div class="metric-bar-fill {% if wind_pct < 25 %}bar-green{% elif wind_pct < 50 %}bar-yellow{% else %}bar-red{% endif %}"
+                         style="width: {{ wind_pct }}%"></div>
+                </div>
+            </div>
+            <div class="metric-card">
+                <span class="metric-icon">💧</span>
+                <div class="metric-label">Humidity</div>
+                <div class="metric-value {{ humidity_class }}">{{ humidity }}</div>
+                <div class="metric-bar">
+                    <div class="metric-bar-fill {% if humidity_pct < 40 %}bar-blue{% elif humidity_pct < 70 %}bar-green{% else %}bar-yellow{% endif %}"
+                         style="width: {{ humidity_pct }}%"></div>
+                </div>
+            </div>
+            <div class="metric-card">
+                <span class="metric-icon">👁️</span>
+                <div class="metric-label">Visibility</div>
+                <div class="metric-value {{ vis_class }}">{{ visibility }}</div>
+                <div class="metric-bar">
+                    <div class="metric-bar-fill {% if vis_pct > 60 %}bar-green{% elif vis_pct > 30 %}bar-yellow{% else %}bar-red{% endif %}"
+                         style="width: {{ vis_pct }}%"></div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /.weather-layout -->
+
+    <!-- ── 7-Day Forecast ── -->
+    <div class="forecast-section">
+        <div class="section-title">7-Day Forecast</div>
+        {% if sparkline %}
+        <div class="sparkline-wrapper">{{ sparkline|safe }}</div>
+        {% endif %}
+        <div class="forecast-scroll">
+            {% for day in forecast %}
+            <div class="forecast-card">
+                <div class="forecast-day">{{ day.day }}</div>
+                <span class="forecast-emoji">{{ day.emoji }}</span>
+                <div class="forecast-temps">
+                    <span class="fc-high" data-c="{{ day.max_c }}" data-f="{{ day.max_f }}">{{ day.max_c }}°</span>
+                    <span class="forecast-sep">/</span>
+                    <span class="fc-low forecast-low" data-c="{{ day.min_c }}" data-f="{{ day.min_f }}">{{ day.min_c }}°</span>
+                </div>
+                <div class="forecast-rain-label">💧 {{ day.rain }}%</div>
+                <div class="forecast-rain-bar">
+                    <div class="forecast-rain-fill" style="width: {{ day.rain }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ── Map ── -->
+    <div class="map-section-label">Location Map</div>
+    <div class="map-section">
+        <img src="{{ map_url }}" alt="Map of {{ city }}" class="map-image">
+    </div>
+
+    <a href="/" class="back-link">← Search Again</a>
+
+    <div class="footer">
+        <p>&copy; 2026 Weazzar — Powered by WeatherAPI &middot; <a href="/privacy" style="opacity:0.6">Privacy Policy</a></p>
+    </div>
+
+</div>
+
+<script>
+    function setUnit(unit) {
+        localStorage.setItem('weazzar_unit', unit);
+        const isF = unit === 'F';
+        document.querySelectorAll('.temp-val').forEach(el => {
+            el.textContent = (isF ? el.dataset.f : el.dataset.c) + '°';
+        });
+        document.querySelectorAll('.fc-high, .fc-low').forEach(el => {
+            el.textContent = (isF ? el.dataset.f : el.dataset.c) + '°';
+        });
+        document.querySelectorAll('.hitemp, .lotemp').forEach(el => {
+            el.textContent = (isF ? el.dataset.f : el.dataset.c) + '°';
+        });
+        document.querySelectorAll('.unit-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.unit === unit);
+        });
+    }
+
+    setUnit(localStorage.getItem('weazzar_unit') || 'C');
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+</script>
+</body>
+</html>

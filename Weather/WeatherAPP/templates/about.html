@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#302b63">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>About — Weazzar</title>
+</head>
+<body>
+<div class="container">
+
+    <div class="header">
+        <h1>🌤️ Weazzar</h1>
+    </div>
+
+    <nav class="nav-bar glass-card">
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/about">About</a></li>
+            <li><a href="/contact">Contact Us</a></li>
+        </ul>
+    </nav>
+
+    <div class="content-section">
+        <h2>About Weazzar</h2>
+        <p>Your go-to app for real-time weather from anywhere in the world. Get accurate, up-to-date conditions plus a 7-day forecast with a clean, modern interface that adapts its theme to the actual weather around you.</p>
+    </div>
+
+    <div class="content-section">
+        <h2>✨ Features</h2>
+        <ul>
+            <li>Real-time temperature with feels-like reading</li>
+            <li>7-day daily forecast with high/low and rain chance</li>
+            <li>°C / °F toggle — preference saved automatically</li>
+            <li>UV index, pressure, wind speed &amp; direction, humidity, and visibility</li>
+            <li>Auto-detects your location on page load</li>
+            <li>Live city autocomplete with instant suggestions</li>
+            <li>Interactive location map for every search</li>
+            <li>Dynamic background theme that adapts to the weather condition</li>
+            <li>Installable as a PWA — works offline for static pages</li>
+        </ul>
+    </div>
+
+    <div class="content-section">
+        <h2>🚀 How to Use</h2>
+        <ol>
+            <li>Allow location access for automatic local weather on load</li>
+            <li>Type a city name — suggestions appear after 2 characters</li>
+            <li>Click a suggestion or press Enter to search</li>
+            <li>Use the °C / °F toggle in the top-right of the weather card</li>
+            <li>Scroll the forecast row to see the full 7-day outlook</li>
+        </ol>
+    </div>
+
+    <a href="/" class="back-link">← Back to Home</a>
+
+    <div class="footer">
+        <p>&copy; 2026 Weazzar — Powered by WeatherAPI &middot; <a href="/privacy" style="opacity:0.6">Privacy Policy</a></p>
+    </div>
+
+</div>
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+</script>
+</body>
+</html>

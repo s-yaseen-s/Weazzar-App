@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#302b63">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Contact — Weazzar</title>
+</head>
+<body>
+<div class="container">
+
+    <div class="header">
+        <h1>🌤️ Weazzar</h1>
+    </div>
+
+    <nav class="nav-bar glass-card">
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/about">About</a></li>
+            <li><a href="/contact">Contact Us</a></li>
+        </ul>
+    </nav>
+
+    <div class="content-section">
+        <h2>Get in Touch</h2>
+        <p>Have questions, feedback, or ideas for Weazzar? We'd love to hear from you.</p>
+    </div>
+
+    <div class="content-section">
+        <h2>📧 Contact</h2>
+        <ul>
+            <li><strong>Email:</strong> contact@weazzar.com</li>
+            <li><strong>Response time:</strong> Within 24 hours</li>
+        </ul>
+    </div>
+
+    <div class="content-section">
+        <h2>🤝 Community</h2>
+        <ul>
+            <li>Follow us on Twitter @Weazzar</li>
+            <li>Join the community on Discord</li>
+        </ul>
+    </div>
+
+    <a href="/" class="back-link">← Back to Home</a>
+
+    <div class="footer">
+        <p>&copy; 2026 Weazzar — Powered by WeatherAPI &middot; <a href="/privacy" style="opacity:0.6">Privacy Policy</a></p>
+    </div>
+
+</div>
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+</script>
+</body>
+</html>

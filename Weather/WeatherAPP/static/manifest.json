@@ -1,0 +1,19 @@
+{
+    "name": "Weazzar — Weather Anywhere",
+    "short_name": "Weazzar",
+    "description": "Real-time weather for anywhere in the world, with 7-day forecast.",
+    "start_url": "/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "background_color": "#0f0c29",
+    "theme_color": "#302b63",
+    "categories": ["weather", "lifestyle"],
+    "icons": [
+        {
+            "src": "/static/icons/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ]
+}
